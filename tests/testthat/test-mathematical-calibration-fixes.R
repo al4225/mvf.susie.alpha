@@ -176,7 +176,10 @@ test_that("final filtering retains one working effect", {
     lfsr_u = list(1)
   ), class = "multfsusie")
 
-  expect_equal(unlist(get_pi0(obj, l = 1L)), 1)
+  pi0 <- mvf.susie.alpha::get_pi0(obj, l = 1L)
+
+  expect_equal(pi0$pi0_u[[1]], 1)
+  expect_null(pi0$pi0_f)
   expect_length(which_dummy_cs(obj, X = matrix(rnorm(8), nrow = 4)), 0L)
 
   filtered <- check_cs(obj, X = matrix(rnorm(8), nrow = 4))

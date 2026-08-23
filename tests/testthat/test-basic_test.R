@@ -361,13 +361,27 @@ est_pi_f <- lapply(1:length(L_mat$L_mat_f) ,
 )
 
 
-test_that("The highest assignation should be equal to", {
-  expect_equal(tpi$est_pi_u[[1]][1], 0,
-               tolerance = 0.01)
-  expect_equal(tpi$est_pi_u[[2]][1], 0,
-               tolerance = 0.01)
-  expect_equal(tpi$est_pi_u[[3]][1], 0,
-               tolerance = 0.01)
+test_that("univariate prior weights reflect the jointly assigned variant", {
+  pi0_u <- vapply(
+    tpi$est_pi_u,
+    function(pi) unname(pi[1L]),
+    numeric(1L)
+  )
+
+  # The joint assignment selects pos3. At this variant, the first two
+  # univariate modalities are assigned an exact-null prior.
+  expect_equal(which.max(zeta), pos3)
+  expect_equal(
+    pi0_u,
+    c(1, 1, 0),
+    tolerance = 0.01
+  )
+
+  expect_true(all(vapply(
+    tpi$est_pi_u,
+    function(pi) abs(sum(pi) - 1) < 1e-8,
+    logical(1L)
+  )))
 })
 
 threshs <- create_null_thresh(type_mark = type_mark)

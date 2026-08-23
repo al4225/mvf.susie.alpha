@@ -75,7 +75,7 @@ m2 <- multfsusie(Y=Y,
                  L_start=11 ,
                  nullweight=10,
                  cal_obj =TRUE,
-                 maxit=10 )
+                 maxit=100 )
 
 test_that("check if objective correctly updated",{
 
