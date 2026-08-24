@@ -26,6 +26,7 @@ out_prep(
   original_P = NULL,
   names_colX = NULL,
   original_mean_X = NULL,
+  univariate_scale = NULL,
   ...
 )
 
@@ -51,6 +52,7 @@ out_prep(
   original_P = NULL,
   names_colX = NULL,
   original_mean_X = NULL,
+  univariate_scale = NULL,
   ...
 )
 }
@@ -86,6 +88,8 @@ post-hoc configuration Bayes factors. Defaults to a uniform prior.}
 \item{names_colX}{original column names of X, if present}
 
 \item{original_mean_X}{column means of the user-supplied X}
+
+\item{univariate_scale}{scale used to standardize each univariate outcome}
 
 \item{verbose}{true or false}
 }

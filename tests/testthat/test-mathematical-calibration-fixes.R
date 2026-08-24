@@ -398,3 +398,56 @@ test_that("single-effect KL uses the exact posterior identity", {
     tolerance = 1e-12
   )
 })
+
+test_that("univariate posterior moments are returned on the original scale", {
+  alpha <- c(0.25, 0.75)
+  posterior_mean <- matrix(c(
+    1, 2,
+    3, 4
+  ), nrow = 2, byrow = TRUE)
+  posterior_var <- matrix(c(
+    0.1, 0.2,
+    0.3, 0.4
+  ), nrow = 2, byrow = TRUE)
+  obj <- structure(list(
+    L = 1L,
+    P = 2L,
+    alpha = list(alpha),
+    fitted_u = list(posterior_mean),
+    fitted_u2 = list(posterior_var),
+    csd_X = c(2, 4)
+  ), class = "multfsusie")
+
+  result <- update_cal_fit_u(obj, univariate_scale = c(10, 2))
+  scale_matrix <- outer(1 / obj$csd_X, c(10, 2), "*")
+  expected_mean <- posterior_mean * scale_matrix
+  expected_var <- posterior_var * scale_matrix^2
+  expected_effect_mean <- colSums(sweep(expected_mean, 1, alpha, "*"))
+  expected_effect_var <-
+    colSums(sweep(expected_var + expected_mean^2, 1, alpha, "*")) -
+    expected_effect_mean^2
+
+  expect_equal(result$fitted_u_conditional[[1]], expected_mean)
+  expect_equal(result$fitted_u2[[1]], expected_var)
+  expect_equal(result$fitted_u[[1]], expected_effect_mean)
+  expect_equal(result$fitted_u_var[[1]], expected_effect_var)
+  expect_equal(result$csd_Y_u, c(10, 2))
+
+  EF <- EF2 <- NULL
+  expect_warning(EF <- get_post_F(result, 1L), NA)
+  expect_warning(EF2 <- get_post_F2(result, 1L), NA)
+  expect_equal(EF$post_u, sweep(expected_mean, 1, alpha, "*"))
+  expect_equal(
+    EF2$post_u_sd2,
+    sweep(expected_var + expected_mean^2, 1, alpha, "*")
+  )
+
+  expect_identical(
+    update_cal_fit_u(result, univariate_scale = c(10, 2)),
+    result
+  )
+  expect_error(
+    update_cal_fit_u(obj, univariate_scale = 1),
+    "one positive finite value per univariate trait"
+  )
+})

@@ -367,6 +367,11 @@ multfsusie <- function(Y, X, L = 2,
 
   # centering input
   Y_data <- multi_array_colScale(Y_data )
+  univariate_scale <- if (is.null(Y_data$Y_u)) {
+    NULL
+  } else {
+    attr(Y_data$Y_u, "scaled:scale")
+  }
   #
   if(verbose){
     print("Data transform done")
@@ -390,6 +395,11 @@ multfsusie <- function(Y, X, L = 2,
       if(quantile_trans)# important to do it after testing for lowcount
       {
         Y_data <- mfsusie_Quantile_transform(Y_data )
+        # A rank-normalized outcome has no linear transformation back to the
+        # original outcome scale. Report its effects on the transformed scale.
+        if (!is.null(Y_data$Y_u)) {
+          univariate_scale <- rep(1, ncol(Y_data$Y_u))
+        }
 
 
       }
@@ -666,7 +676,8 @@ multfsusie <- function(Y, X, L = 2,
                                kept_index = kept_index,
                                original_P = original_P,
                                names_colX = names_colX,
-                               original_mean_X = original_mean_X
+                               original_mean_X = original_mean_X,
+                               univariate_scale = univariate_scale
 
     )
    multfsusie.obj$runtime <- multfsusie.obj$runtime+ proc.time()-pt

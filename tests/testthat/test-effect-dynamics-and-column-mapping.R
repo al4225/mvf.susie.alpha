@@ -162,6 +162,10 @@ test_that("postprocessed mixed-trait output handles constant and complete X", {
     obj$fitted_u2 <- lapply(seq_len(obj$L), function(l) {
       matrix(l, nrow=P, ncol=3L)
     })
+    obj$fitted_u_conditional <- lapply(seq_len(obj$L), function(l) {
+      matrix(l + 0.5, nrow=P, ncol=3L)
+    })
+    obj$fitted_u_var <- list(c(0.1, 0.2, 0.3), c(0.4, 0.5, 0.6))
     obj$fitted_wc <- lapply(seq_len(obj$L), function(l) {
       list(
         matrix(l, nrow=P, ncol=32L),
@@ -185,6 +189,10 @@ test_that("postprocessed mixed-trait output handles constant and complete X", {
   }
 
   with_constant <- make_postprocessed_output(P=99L)
+  filtered <- discard_cs(with_constant, cs=2L, out_prep=FALSE)
+  expect_length(filtered$fitted_u_conditional, 1L)
+  expect_length(filtered$fitted_u_var, 1L)
+
   kept_index <- setdiff(seq_len(100L), 4L)
   restored <- NULL
   expect_error(
@@ -200,7 +208,13 @@ test_that("postprocessed mixed-trait output handles constant and complete X", {
   # update_cal_fit_u() has already collapsed these to one value per
   # univariate trait; they must not be interpreted as SNP-indexed matrices.
   expect_identical(restored$fitted_u, with_constant$fitted_u)
+  expect_identical(restored$fitted_u_var, with_constant$fitted_u_var)
   expect_true(all(vapply(restored$fitted_u2, nrow, integer(1)) == 100L))
+  expect_true(all(vapply(
+    restored$fitted_u_conditional,
+    nrow,
+    integer(1)
+  ) == 100L))
   expect_true(all(vapply(restored$fitted_wc, function(effect) {
     all(vapply(effect, nrow, integer(1)) == 100L)
   }, logical(1))))

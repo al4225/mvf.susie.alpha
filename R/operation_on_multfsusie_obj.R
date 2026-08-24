@@ -233,7 +233,8 @@ create_dummy_susiF <- function( multfsusie.obj   ){
 
 .mvf_effect_fields <- c(
   "alpha", "lBF", "lBF_per_trait", "fitted_wc", "fitted_wc2",
-  "fitted_u", "fitted_u2", "cs", "est_pi", "est_sd", "KL",
+  "fitted_u", "fitted_u2", "fitted_u_conditional", "fitted_u_var",
+  "cs", "est_pi", "est_sd", "KL",
   "lfsr_wc", "lfsr_u", "lfsr", "fitted_func", "fitted_var",
   "cred_band", "HMM_lBF", "posthoc", "purity", "ind_fitted_val"
 )
@@ -945,6 +946,12 @@ get_post_F  <- function(multfsusie.obj,l, ...)
 #' @keywords internal
 get_post_F.multfsusie <- function (multfsusie.obj,l, ... ){
 
+  fitted_u <- if (is.null(multfsusie.obj$fitted_u_conditional)) {
+    multfsusie.obj$fitted_u
+  } else {
+    multfsusie.obj$fitted_u_conditional
+  }
+
   if(missing(l))
   {
     if(!is.null(multfsusie.obj$fitted_wc)){
@@ -958,11 +965,11 @@ get_post_F.multfsusie <- function (multfsusie.obj,l, ... ){
     }else{
       out_f <- NULL
     }
-    if(!is.null(multfsusie.obj$fitted_u)){
+    if(!is.null(fitted_u)){
       out_u <-  Reduce("+",
                        lapply(1:multfsusie.obj$L,
                               function(l)
-                                multfsusie.obj$alpha[[l]] * multfsusie.obj$fitted_u[[l]]
+                                multfsusie.obj$alpha[[l]] * fitted_u[[l]]
                        )
       )
     }else{
@@ -978,8 +985,8 @@ get_post_F.multfsusie <- function (multfsusie.obj,l, ... ){
       }else{
               out_f <- NULL
       }
-      if(!is.null(multfsusie.obj$fitted_u)){
-             out_u <-  multfsusie.obj$alpha[[l]] * multfsusie.obj$fitted_u[[l]]
+      if(!is.null(fitted_u)){
+             out_u <-  multfsusie.obj$alpha[[l]] * fitted_u[[l]]
       }else{
              out_u <- NULL
       }
@@ -1016,6 +1023,12 @@ get_post_F2  <- function(multfsusie.obj,l, ...)
 #' @keywords internal
 get_post_F2.multfsusie <- function (multfsusie.obj,l, ...){
 
+  fitted_u <- if (is.null(multfsusie.obj$fitted_u_conditional)) {
+    multfsusie.obj$fitted_u
+  } else {
+    multfsusie.obj$fitted_u_conditional
+  }
+
   if(missing(l))
   {
     if(!is.null(multfsusie.obj$fitted_wc)){
@@ -1029,11 +1042,11 @@ get_post_F2.multfsusie <- function (multfsusie.obj,l, ...){
     }else{
       out_f <- NULL
     }
-    if(!is.null(multfsusie.obj$fitted_u)){
+    if(!is.null(fitted_u)){
       out_u <-  Reduce("+",
                        lapply(1:multfsusie.obj$L,
                               function(l)
-                                multfsusie.obj$alpha[[l]] * (multfsusie.obj$fitted_u2[[l]]+multfsusie.obj$fitted_u[[l]]^2    )
+                                multfsusie.obj$alpha[[l]] * (multfsusie.obj$fitted_u2[[l]]+fitted_u[[l]]^2    )
                        )
       )
     }else{
@@ -1051,8 +1064,8 @@ get_post_F2.multfsusie <- function (multfsusie.obj,l, ...){
     }else{
       out_f <- NULL
     }
-    if(!is.null(multfsusie.obj$fitted_u)){
-      out_u <-   multfsusie.obj$alpha[[l]] * (multfsusie.obj$fitted_u2[[l]]+multfsusie.obj$fitted_u[[l]]^2    )
+    if(!is.null(fitted_u)){
+      out_u <-   multfsusie.obj$alpha[[l]] * (multfsusie.obj$fitted_u2[[l]]+fitted_u[[l]]^2    )
 
     }else{
       out_u <- NULL
@@ -1470,6 +1483,7 @@ name_cs.multfsusie <- function(multfsusie.obj,X,...){
 #'@param original_P number of columns in the user-supplied X
 #'@param names_colX original column names of X, if present
 #'@param original_mean_X column means of the user-supplied X
+#'@param univariate_scale scale used to standardize each univariate outcome
 #' @export
 #' @keywords internal
 out_prep <- function(multfsusie.obj,
@@ -1491,7 +1505,8 @@ out_prep <- function(multfsusie.obj,
                       kept_index=NULL,
                       original_P=NULL,
                       names_colX=NULL,
-                      original_mean_X=NULL, ...)
+                      original_mean_X=NULL,
+                      univariate_scale=NULL, ...)
 UseMethod("out_prep")
 
 #' @rdname out_prep
@@ -1526,9 +1541,13 @@ out_prep.multfsusie <- function(multfsusie.obj,
                                  original_P=NULL,
                                  names_colX=NULL,
                                  original_mean_X=NULL,
+                                 univariate_scale=NULL,
                                  ... )
 {
-  multfsusie.obj <-  update_cal_fit_u(multfsusie.obj )
+  multfsusie.obj <- update_cal_fit_u(
+    multfsusie.obj,
+    univariate_scale=univariate_scale
+  )
 
   multfsusie.obj <-  update_cal_pip(multfsusie.obj)
   multfsusie.obj <- update_cal_cs(multfsusie.obj,
@@ -1751,9 +1770,9 @@ restore_original_columns_multfsusie <- function(
   )
 
   # update_cal_fit_u() has already collapsed fitted_u[[l]] over variants, so
-  # each entry is a per-univariate-trait effect vector at this point. Only
-  # fitted_u2 remains variant-indexed and needs its rows restored.
-  for (field in "fitted_u2") {
+  # each entry is a per-univariate-trait effect vector at this point. The
+  # conditional posterior moments remain variant-indexed.
+  for (field in c("fitted_u2", "fitted_u_conditional")) {
     if (!is.null(multfsusie.obj[[field]])) {
       multfsusie.obj[[field]] <- lapply(
         multfsusie.obj[[field]], expand_rows, fill=0
@@ -2505,6 +2524,7 @@ update_cal_fit_func.multfsusie <- function(multfsusie.obj,list_indx_lst,... ){
 #' @title Update multfsusie by computing univariate estimates
 #
 #' @param multfsusie.obj a susiF object defined by init_multfsusie_obj function
+#' @param univariate_scale scale used to standardize each univariate outcome
 #
 
 #' @return multfsusie object
@@ -2525,23 +2545,70 @@ update_cal_fit_u  <- function(multfsusie.obj, ...)
 #' @keywords internal
 
 
-update_cal_fit_u.multfsusie <- function(multfsusie.obj, ... ){
+update_cal_fit_u.multfsusie <- function(multfsusie.obj,
+                                        univariate_scale=NULL, ... ){
 
   if(is.null(multfsusie.obj$fitted_u)){
     return(multfsusie.obj)
   }
-
-
-  for( l in 1: length(multfsusie.obj$cs)){
-
-      multfsusie.obj$fitted_u[[l]] <- apply( (multfsusie.obj$alpha[[l]]) * sweep( multfsusie.obj$fitted_u[[l]] ,
-                                                                         1,
-                                                                         1/(multfsusie.obj$csd_X ), "*"), 2,sum)
-
-
-
-
+  if (!is.null(multfsusie.obj$fitted_u_conditional)) {
+    return(multfsusie.obj)
   }
+
+  n_traits <- ncol(multfsusie.obj$fitted_u[[1]])
+  if (is.null(univariate_scale)) {
+    univariate_scale <- rep(1, n_traits)
+  }
+  if (length(univariate_scale) != n_traits ||
+      anyNA(univariate_scale) || any(!is.finite(univariate_scale)) ||
+      any(univariate_scale <= 0)) {
+    stop("univariate_scale must contain one positive finite value per univariate trait")
+  }
+  if (length(multfsusie.obj$csd_X) != multfsusie.obj$P ||
+      anyNA(multfsusie.obj$csd_X) ||
+      any(!is.finite(multfsusie.obj$csd_X)) ||
+      any(multfsusie.obj$csd_X <= 0)) {
+    stop("csd_X must contain one positive finite value per fitted covariate")
+  }
+
+  multfsusie.obj$fitted_u_conditional <- vector("list", multfsusie.obj$L)
+  multfsusie.obj$fitted_u_var <- vector("list", multfsusie.obj$L)
+  scale_matrix <- outer(
+    1 / multfsusie.obj$csd_X,
+    univariate_scale,
+    "*"
+  )
+
+  for (l in seq_len(multfsusie.obj$L)) {
+    posterior_mean <- as.matrix(multfsusie.obj$fitted_u[[l]])
+    posterior_var <- as.matrix(multfsusie.obj$fitted_u2[[l]])
+    if (!identical(dim(posterior_mean), c(multfsusie.obj$P, n_traits)) ||
+        !identical(dim(posterior_var), c(multfsusie.obj$P, n_traits)) ||
+        length(multfsusie.obj$alpha[[l]]) != multfsusie.obj$P) {
+      stop("Univariate posterior moments are not aligned with the fitted covariates and traits")
+    }
+
+    posterior_mean <- posterior_mean * scale_matrix
+    posterior_var <- posterior_var * scale_matrix^2
+    alpha <- multfsusie.obj$alpha[[l]]
+    effect_mean <- colSums(sweep(posterior_mean, 1, alpha, "*"))
+    effect_second_moment <- colSums(sweep(
+      posterior_var + posterior_mean^2,
+      1,
+      alpha,
+      "*"
+    ))
+
+    multfsusie.obj$fitted_u_conditional[[l]] <- posterior_mean
+    multfsusie.obj$fitted_u2[[l]] <- posterior_var
+    multfsusie.obj$fitted_u[[l]] <- effect_mean
+    multfsusie.obj$fitted_u_var[[l]] <- pmax(
+      effect_second_moment - effect_mean^2,
+      0
+    )
+  }
+
+  multfsusie.obj$csd_Y_u <- univariate_scale
   return( multfsusie.obj)
 }
 

@@ -7,10 +7,12 @@
 \usage{
 update_cal_fit_u(multfsusie.obj, ...)
 
-\method{update_cal_fit_u}{multfsusie}(multfsusie.obj, ...)
+\method{update_cal_fit_u}{multfsusie}(multfsusie.obj, univariate_scale = NULL, ...)
 }
 \arguments{
 \item{multfsusie.obj}{a susiF object defined by init_multfsusie_obj function}
+
+\item{univariate_scale}{scale used to standardize each univariate outcome}
 }
 \value{
 multfsusie object
